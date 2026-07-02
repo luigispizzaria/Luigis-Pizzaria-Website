@@ -3,192 +3,230 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Luigi's Pizzaria - Internal System</title>
+    <title>Luigi's Pizzaria - POS Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: Arial, sans-serif; margin: 0; background-color: #f4f4f9; padding: 20px; }
-        .container { max-width: 1000px; margin: auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); position: relative; }
-        h1, h2, h3 { color: #d32f2f; margin-top: 0; }
-        
-        /* AUTH PAGE SHIELD */
-        #login-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:#d32f2f; display: flex; justify-content: center; align-items: center; z-index: 9999; }
-        .login-box { background: white; padding: 40px; border-radius: 8px; width: 100%; max-width: 350px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
-        
-        /* NAVIGATION TABS */
-        .tab-navigation { display: flex; gap: 10px; margin-bottom: 25px; border-bottom: 3px solid #d32f2f; padding-bottom: 10px; flex-wrap: wrap; }
-        .tab-btn { background-color: #eee; border: none; padding: 12px 20px; font-weight: bold; cursor: pointer; border-radius: 5px; color: #333; transition: 0.2s; }
-        .tab-btn:hover { background-color: #ddd; }
-        .tab-btn.active { background-color: #d32f2f; color: white; }
-        
-        /* SECTIONS WRAPPER */
+        :root {
+            --primary: #c62828; --primary-dark: #b71c1c; --accent: #f5a623;
+            --bg-main: #f8f9fa; --bg-sidebar: #1a1a1a; --text-main: #2d3748;
+            --text-muted: #718096; --border: #e2e8f0; --radius: 10px;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background-color: var(--bg-main); color: var(--text-main); display: flex; min-height: 100vh; }
+
+        /* AUTH PAGE OVERLAY SHIELD */
+        #login-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: linear-gradient(135deg, var(--primary), #801313); display: flex; justify-content: center; align-items: center; z-index: 9999; }
+        .login-box { background: white; padding: 40px; border-radius: 16px; width: 100%; max-width: 400px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .login-box h2 { font-size: 28px; color: var(--primary); margin-bottom: 8px; font-weight: 700; }
+        .login-box p { color: var(--text-muted); font-size: 14px; margin-bottom: 24px; }
+
+        /* MAIN APP HOUSING LAYOUT */
+        #sidebar { width: 260px; background-color: var(--bg-sidebar); color: white; padding: 30px 20px; display: flex; flex-direction: column; gap: 30px; shrink: 0; }
+        .brand { font-size: 22px; font-weight: 700; color: white; display: flex; align-items: center; gap: 10px; padding-left: 10px; }
+        .brand span { color: var(--accent); }
+        .nav-list { display: flex; flex-direction: column; gap: 8px; list-style: none; }
+        .tab-btn { background: none; border: none; color: #a0aec0; padding: 14px 16px; font-weight: 600; font-size: 15px; cursor: pointer; border-radius: var(--radius); text-align: left; width: 100%; transition: all 0.2s ease; display: flex; align-items: center; gap: 12px; }
+        .tab-btn:hover { background-color: rgba(255,255,255,0.05); color: white; }
+        .tab-btn.active { background-color: var(--primary); color: white; box-shadow: 0 4px 12px rgba(198, 40, 40, 0.3); }
+        .logout-wrapper { margin-top: auto; }
+        .logout-btn { background-color: rgba(255,255,255,0.1); color: #fc8181; width: 100%; border: none; padding: 12px; font-weight: 600; border-radius: var(--radius); cursor: pointer; transition: background 0.2s; }
+        .logout-btn:hover { background-color: rgba(252, 129, 129, 0.2); }
+
+        #main-content { flex-grow: 1; padding: 40px; overflow-y: auto; max-width: 1200px; }
         .app-section { display: none; }
         .app-section.active { display: block; }
-        
-        /* FORM UI COMPONENTS */
-        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .form-group { display: flex; flex-direction: column; }
-        label { margin-bottom: 5px; font-weight: bold; font-size: 14px; color: #555; }
-        input, select, button { padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 15px; box-sizing: border-box; }
-        button { background-color: #4CAF50; color: white; border: none; cursor: pointer; font-weight: bold; width: auto; align-self: flex-start; padding: 10px 25px; }
-        button:hover { background-color: #45a049; }
-        .logout-btn { background-color: #777; float: right; padding: 5px 12px; font-size: 13px; }
-        
-        /* DATA TABLES */
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; }
-        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-        th { background-color: #f8f8f8; color: #333; }
-        .flex-container { display: flex; gap: 30px; flex-wrap: wrap; }
-        .flex-child { flex: 1; min-width: 300px; }
+
+        /* CONTENT CARDS & TABLES UI */
+        .section-header { margin-bottom: 30px; }
+        .section-header h2 { font-size: 26px; font-weight: 700; color: #1a202c; }
+        .section-header p { color: var(--text-muted); font-size: 14px; margin-top: 4px; }
+        .card { background: white; padding: 30px; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 30px; }
+        .card h3 { font-size: 18px; font-weight: 600; margin-bottom: 20px; color: #2d3748; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 24px; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        label { font-weight: 600; font-size: 13px; color: #4a5568; text-transform: uppercase; letter-spacing: 0.5px; }
+        input, select { padding: 12px 16px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 15px; color: var(--text-main); background-color: #fff; }
+        input:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(198, 40, 40, 0.1); }
+        button.action-btn { background-color: var(--primary); color: white; border: none; padding: 14px 28px; font-size: 15px; font-weight: 600; border-radius: var(--radius); cursor: pointer; transition: all 0.2s; }
+        button.action-btn:hover { background-color: var(--primary-dark); }
+        .total-display { font-size: 22px; font-weight: 700; margin-bottom: 20px; }
+        .total-display span.amount { color: var(--primary); }
+        .badge { background: #e6fffa; color: #234e52; font-size: 12px; padding: 4px 10px; border-radius: 20px; font-weight: 600; }
+        table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 10px; }
+        th { background-color: #f7fafc; color: #4a5568; font-weight: 600; font-size: 13px; text-transform: uppercase; padding: 16px; border-bottom: 2px solid var(--border); text-align: left; }
+        td { padding: 16px; border-bottom: 1px solid var(--border); font-size: 15px; color: #4a5568; }
+        .empty-state { text-align: center; color: var(--text-muted); padding: 30px; font-style: italic; }
+        .flex-layout { display: flex; gap: 30px; flex-wrap: wrap; }
+        .flex-col { flex: 1; min-width: 320px; }
     </style>
 </head>
 <body>
 
 <div id="login-overlay">
     <div class="login-box">
-        <h2>🍕 Luigi's Login</h2>
-        <p style="color:#666; font-size:14px;">Demo Credentials: admin / admin</p>
-        <div class="form-group" style="margin-bottom: 15px;">
-            <input type="text" id="login-user" placeholder="Username / Email">
+        <h2>🍕 Luigi's Terminal</h2>
+        <p>Login with your verified team email credentials</p>
+        <div class="form-group" style="margin-bottom: 16px;">
+            <input type="email" id="login-email" placeholder="Corporate Email">
         </div>
-        <div class="form-group" style="margin-bottom: 20px;">
+        <div class="form-group" style="margin-bottom: 24px;">
             <input type="password" id="login-pass" placeholder="Password">
         </div>
-        <button onclick="handleLogin()" style="width:100%;">Sign In</button>
+        <button class="action-btn" style="width:100%;" onclick="handleLogin()">Sign In</button>
     </div>
 </div>
 
-<div class="container">
-    <button class="logout-btn" onclick="handleLogout()">Log Out</button>
-    <h1>🍕 Luigi's Management System</h1>
-
-    <div class="tab-navigation">
-        <button class="tab-btn active" onclick="switchTab('orders')">📥 Take Orders</button>
-        <button class="tab-btn" onclick="switchTab('memberships')">💳 Memberships</button>
-        <button class="tab-btn" onclick="switchTab('inventory')">📦 Menu & Stock</button>
-        <button class="tab-btn" onclick="switchTab('payroll')">👥 Team & Payroll</button>
+<aside id="sidebar">
+    <div class="brand">🍕 Luigi's<span>POS</span></div>
+    <ul class="nav-list">
+        <li><button class="tab-btn active" id="btn-orders" onclick="switchTab('orders')">📥 Take Orders</button></li>
+        <li><button class="tab-btn" id="btn-memberships" onclick="switchTab('memberships')">💳 Memberships</button></li>
+        <li><button class="tab-btn" id="btn-inventory" onclick="switchTab('inventory')">📦 Menu & Stock</button></li>
+        <li><button class="tab-btn" id="btn-payroll" onclick="switchTab('payroll')">👥 Team & Payroll</button></li>
+    </ul>
+    <div class="logout-wrapper">
+        <button class="logout-btn" onclick="handleLogout()">Secure Lock</button>
     </div>
+</aside>
 
+<main id="main-content">
     <section id="orders" class="app-section active">
-        <h2>New Customer Order</h2>
-        <div class="form-grid">
-            <div class="form-group">
-                <label>Customer Name:</label>
-                <input type="text" id="cust-name" placeholder="John Doe">
-            </div>
-            <div class="form-group">
-                <label>Is Customer a Member?</label>
-                <select id="cust-is-member" onchange="calculateLiveTotal()">
-                    <option value="no">No (Standard Pricing)</option>
-                    <option value="yes">Yes (Apply Member Discount)</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Select Item:</label>
-                <select id="order-item" onchange="calculateLiveTotal()"></select>
-            </div>
-            <div class="form-group">
-                <label>Quantity:</label>
-                <input type="number" id="order-qty" value="1" min="1" oninput="calculateLiveTotal()">
-            </div>
-            <div class="form-group">
-                <label>Logged By (Worker):</label>
-                <select id="order-worker"></select>
-            </div>
+        <div class="section-header">
+            <h2>Counter POS Terminal</h2>
+            <p>Log customer purchases, map commissions, and auto-deduct live ingredient stocks.</p>
         </div>
-        <h3 style="color:#333;">Amount Due: $<span id="live-total">0.00</span> <span id="discount-badge" style="color:green; font-size:14px; display:none;"></span></h3>
-        <button onclick="submitOrder()">Process Order</button>
+        <div class="card">
+            <h3>New Order Parameters</h3>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Customer Name</label>
+                    <input type="text" id="cust-name" placeholder="Enter customer name">
+                </div>
+                <div class="form-group">
+                    <label>Membership Status</label>
+                    <select id="cust-is-member" onchange="calculateLiveTotal()">
+                        <option value="no">Standard Customer</option>
+                        <option value="yes">Active Member (Apply Discount)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Select Menu Item</label>
+                    <select id="order-item" onchange="calculateLiveTotal()"></select>
+                </div>
+                <div class="form-group">
+                    <label>Quantity</label>
+                    <input type="number" id="order-qty" value="1" min="1" oninput="calculateLiveTotal()">
+                </div>
+                <div class="form-group">
+                    <label>Server Profile Tracking</label>
+                    <select id="order-worker"></select>
+                </div>
+            </div>
+            <div class="total-display">
+                Total Balance: <span class="amount" id="live-total">$0.00</span>
+                <span id="discount-badge" class="badge" style="display:none;"></span>
+            </div>
+            <button class="action-btn" onclick="submitOrder()">Submit Order Receipt</button>
+        </div>
     </section>
 
     <section id="memberships" class="app-section">
-        <h2>Customer Membership Matrix</h2>
-        <div class="flex-container">
-            <div class="flex-child">
-                <h3>Register New Member</h3>
-                <div class="form-group" style="margin-bottom:12px;">
-                    <label>Full Name:</label>
-                    <input type="text" id="mem-cust-name" placeholder="Jane Smith">
+        <div class="section-header">
+            <h2>Membership Portal</h2>
+            <p>Onboard loyal diners into membership configurations and access profile logs.</p>
+        </div>
+        <div class="flex-layout">
+            <div class="flex-col card">
+                <h3>Register New Profile</h3>
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label>Full Legal Name</label>
+                    <input type="text" id="mem-cust-name" placeholder="First and last name">
                 </div>
-                <div class="form-group" style="margin-bottom:12px;">
-                    <label>Phone Number:</label>
-                    <input type="tel" id="mem-cust-phone" placeholder="555-0199">
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label>Contact Phone Line</label>
+                    <input type="tel" id="mem-cust-phone" placeholder="(555) 000-0000">
                 </div>
-                <div class="form-group" style="margin-bottom:15px;">
-                    <label>Duration (Months):</label>
+                <div class="form-group" style="margin-bottom:20px;">
+                    <label>Subscription Span (Months)</label>
                     <input type="number" id="mem-months" value="1" min="1" oninput="calculateMembershipTotal()">
                 </div>
-                <p><strong>Total Sign-up Cost:</strong> $<span id="mem-live-total">0.00</span></p>
-                <button onclick="registerMember()">Create Membership</button>
+                <div class="total-display" style="font-size: 18px;">
+                    Upfront Cost: <span class="amount" id="mem-live-total">$0.00</span>
+                </div>
+                <button class="action-btn" onclick="registerMember()">Issue Membership</button>
             </div>
-            <div class="flex-child">
-                <h3>Active Members Database</h3>
+            <div class="flex-col card">
+                <h3>Active Members Registry</h3>
                 <table>
-                    <thead>
-                        <tr><th>Name</th><th>Phone</th><th>Months Registered</th></tr>
-                    </thead>
-                    <tbody id="members-table-body">
-                        </tbody>
+                    <thead><tr><th>Name</th><th>Phone Number</th><th>Term Duration</th></tr></thead>
+                    <tbody id="members-table-body"></tbody>
                 </table>
             </div>
         </div>
     </section>
 
     <section id="inventory" class="app-section">
-        <h2>Owner Dashboard: Offerings & Config</h2>
-        <div class="flex-container">
-            <div class="flex-child" style="border-right: 1px solid #eee; padding-right:20px;">
-                <h3>Add/Modify Menu Items</h3>
-                <div class="form-group" style="margin-bottom:10px;">
-                    <label>Item Designation:</label>
-                    <input type="text" id="new-item-name" placeholder="Meatlovers Pizza">
+        <div class="section-header">
+            <h2>Menu & Inventory Controls</h2>
+            <p>Provision the kitchen menu line-sheet, verify counts, and calibrate variables.</p>
+        </div>
+        <div class="flex-layout">
+            <div class="flex-col card">
+                <h3>Propose / Edit Menu Item</h3>
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label>Item Designation Name</label>
+                    <input type="text" id="new-item-name" placeholder="e.g., Supreme Pizza">
                 </div>
-                <div class="form-group" style="margin-bottom:10px;">
-                    <label>Unit Price ($):</label>
-                    <input type="number" id="new-item-price" step="0.01" placeholder="16.50">
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label>Retail Base Value ($)</label>
+                    <input type="number" id="new-item-price" step="0.01" placeholder="0.00">
                 </div>
-                <div class="form-group" style="margin-bottom:15px;">
-                    <label>Current Stock Count:</label>
-                    <input type="number" id="new-item-stock" placeholder="60">
+                <div class="form-group" style="margin-bottom:20px;">
+                    <label>Initial Stock Allotment</label>
+                    <input type="number" id="new-item-stock" placeholder="0">
                 </div>
-                <button onclick="addMenuItem()">Save Item</button>
+                <button class="action-btn" onclick="addMenuItem()">Commit Item Settings</button>
             </div>
-            
-            <div class="flex-child">
-                <h3>Membership Tier Structure</h3>
-                <div class="form-group" style="margin-bottom:10px;">
-                    <label>Rate Per Month ($):</label>
+            <div class="flex-col card">
+                <h3>System Variable Rules</h3>
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label>Membership Value Base ($ / Month)</label>
                     <input type="number" id="config-mem-price" step="0.01" value="10.00" oninput="calculateMembershipTotal()">
                 </div>
-                <div class="form-group" style="margin-bottom:15px;">
-                    <label>Customer Menu Discount (%):</label>
+                <div class="form-group" style="margin-bottom:20px;">
+                    <label>Automated Member Discount Value (%)</label>
                     <input type="number" id="config-mem-discount" value="10" min="0" max="100" onchange="calculateLiveTotal()">
                 </div>
-                <p style="color:#666; font-size:13px; margin-top:5px;">Modifications update live calculation values globally instantly.</p>
             </div>
         </div>
-
-        <h3 style="margin-top:30px;">Live Stock & Pricing Matrix</h3>
-        <table>
-            <thead>
-                <tr><th>Menu Selection</th><th>Standard Pricing</th><th>Current Stock Depth</th></tr>
-            </thead>
-            <tbody id="stock-table-body"></tbody>
-        </table>
+        <div class="card">
+            <h3>Active Pricing Sheets & Stock Depth Balances</h3>
+            <table>
+                <thead><tr><th>Food/Drink Selection</th><th>Standard Retail Price</th><th>Stock Remaining Balance</th></tr></thead>
+                <tbody id="stock-table-body"></tbody>
+            </table>
+        </div>
     </section>
 
     <section id="payroll" class="app-section">
-        <h2>Owner Dashboard: Personnel & Commissions</h2>
-        <div class="flex-container">
-            <div class="flex-child">
-                <h3>Onboard Employee via Email Invite</h3>
-                <div class="form-group" style="margin-bottom:10px;">
-                    <label>Full Name:</label>
-                    <input type="text" id="emp-name" placeholder="Mario Rossi">
+        <div class="section-header">
+            <h2>Personnel & Commission Matrix</h2>
+            <p>Onboard staff via secure cloud registration emails and review live pay audit streams.</p>
+        </div>
+        <div class="card">
+            <h3>Invite Employee via Secure Cloud Link</h3>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Full Legal Name</label>
+                    <input type="text" id="emp-name" placeholder="Employee full name">
                 </div>
-                <div class="form-group" style="margin-bottom:10px;">
-                    <label>Corporate Email Address:</label>
-                    <input type="email" id="emp-email" placeholder="mario@luigispizza.com">
+                <div class="form-group">
+                    <label>Corporate Contact Email</label>
+                    <input type="email" id="emp-email" placeholder="name@luigispizzeria.com">
                 </div>
-                <div class="form-group" style="margin-bottom:15px;">
-                    <label>Operational Rank Assignment:</label>
+                <div class="form-group">
+                    <label>Operational Rank Access Tier</label>
                     <select id="emp-rank">
                         <option value="Owner">Owner (50%)</option>
                         <option value="Manager">Manager (45%)</option>
@@ -197,218 +235,200 @@
                         <option value="Events Team">Events Team (35%)</option>
                     </select>
                 </div>
-                <button onclick="inviteEmployee()">Send Invitation Email</button>
             </div>
+            <button class="action-btn" onclick="inviteEmployee()">Send Invitation Email</button>
         </div>
-
-        <h3 style="margin-top:30px;">Weekly Payout Ledger</h3>
-        <table>
-            <thead>
-                <tr><th>Team Member Name</th><th>Operational Rank</th><th>Accumulated Weekly Payout</th></tr>
-            </thead>
-            <tbody id="payout-table-body"></tbody>
-        </table>
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 20px;">
+                <h3 style="border:none; margin:0;">Weekly Balance Ledger Sheets</h3>
+                <button class="action-btn" style="background-color: #4a5568; padding: 8px 16px; font-size:13px;" onclick="resetWeeklyPayroll()">Reset Weekly Ledger</button>
+            </div>
+            <table>
+                <thead><tr><th>Active Name</th><th>Corporate Operational Rank</th><th>Accrued Weekly Commission Payout</th></tr></thead>
+                <tbody id="payout-table-body"></tbody>
+            </table>
+        </div>
     </section>
-</div>
+</main>
 
 <script>
-    // --- Data Repositories ---
-    let menu = {
-        "Cheese Pizza": { price: 12.00, stock: 50 },
-        "Pepperoni Pizza": { price: 15.00, stock: 40 },
-        "Soda": { price: 2.50, stock: 100 }
-    };
+    // INITIALIZATION VALUES: Swap with your exact Supabase API credentials
+    const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL";
+    const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    let employees = {
-        "Luigi": { rank: "Owner", earnings: 0 },
-        "Mario": { rank: "Chef", earnings: 0 },
-        "Peach": { rank: "Waiter", earnings: 0 }
-    };
+    let menu = {}, employees = {}, activeMembers = [];
+    let config = { memPrice: 10.00, memDiscount: 10 };
+    const rankRates = { "Owner": 0.50, "Manager": 0.45, "Chef": 0.40, "Waiter": 0.35, "Events Team": 0.35 };
 
-    let activeMembers = [
-        { name: "Bowser Koopa", phone: "555-1234", months: 6 }
-    ];
-
-    const rankRates = {
-        "Owner": 0.50, "Manager": 0.45, "Chef": 0.40, "Waiter": 0.35, "Events Team": 0.35
-    };
-
-    // --- Authentication Flow ---
-    function handleLogin() {
-        const u = document.getElementById('login-user').value;
-        const p = document.getElementById('login-pass').value;
-        if(u === 'admin' && p === 'admin') {
+    // --- Boot Initializer & Cloud Sync ---
+    window.onload = async function() {
+        const { data: { session } } = await _supabase.auth.getSession();
+        if (session) {
             document.getElementById('login-overlay').style.display = 'none';
-        } else {
-            alert("Invalid Credentials. Please use the demonstration default.");
+            await fetchAllCloudData();
         }
-    }
-    function handleLogout() {
-        document.getElementById('login-user').value = '';
-        document.getElementById('login-pass').value = '';
-        document.getElementById('login-overlay').style.display = 'flex';
+    };
+
+    async function fetchAllCloudData() {
+        let { data: items } = await _supabase.from('menu_items').select('*');
+        menu = {}; if(items) items.forEach(i => menu[i.name] = { id: i.id, price: parseFloat(i.price), stock: i.stock });
+
+        let { data: emps } = await _supabase.from('employees').select('*');
+        employees = {}; if(emps) emps.forEach(e => employees[e.name] = { id: e.id, email: e.email, rank: e.rank, earnings: parseFloat(e.weekly_earnings) });
+
+        let { data: mems } = await _supabase.from('members').select('*');
+        activeMembers = mems || [];
+
+        updateDropdowns();
+        renderTables();
+        calculateLiveTotal();
     }
 
-    // --- Core Architecture Tab Handling ---
+    async function handleLogin() {
+        const email = document.getElementById('login-email').value;
+        const pass = document.getElementById('login-pass').value;
+        const { error } = await _supabase.auth.signInWithPassword({ email, password: pass });
+        if(error) { alert("Access Denied: " + error.message); } else { location.reload(); }
+    }
+
+    async function handleLogout() { await _supabase.auth.signOut(); location.reload(); }
+
     function switchTab(tabId) {
         document.querySelectorAll('.app-section').forEach(sec => sec.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-        
         document.getElementById(tabId).classList.add('active');
-        event.currentTarget.classList.add('active');
+        document.getElementById('btn-' + tabId).classList.add('active');
     }
 
-    // --- Core Operations Logic ---
     function updateDropdowns() {
         const itemSelect = document.getElementById('order-item');
-        itemSelect.innerHTML = '';
-        for (let item in menu) {
-            itemSelect.innerHTML += `<option value="${item}">${item} ($${menu[item].price.toFixed(2)})</option>`;
-        }
+        itemSelect.innerHTML = Object.keys(menu).length === 0 ? '<option value="">(Add items in Menu Tab first)</option>' : '';
+        for (let item in menu) itemSelect.innerHTML += `<option value="${item}">${item} ($${menu[item].price.toFixed(2)})</option>`;
         
         const workerSelect = document.getElementById('order-worker');
-        workerSelect.innerHTML = '';
-        for (let emp in employees) {
-            workerSelect.innerHTML += `<option value="${emp}">${emp} (${employees[emp].rank})</option>`;
-        }
+        workerSelect.innerHTML = Object.keys(employees).length === 0 ? '<option value="">(Add employees in Team Tab first)</option>' : '';
+        for (let emp in employees) workerSelect.innerHTML += `<option value="${emp}">${emp} (${employees[emp].rank})</option>`;
     }
 
     function renderTables() {
         const stockBody = document.getElementById('stock-table-body');
-        stockBody.innerHTML = '';
-        for (let item in menu) {
-            stockBody.innerHTML += `<tr><td><strong>${item}</strong></td><td>$${menu[item].price.toFixed(2)}</td><td>${menu[item].stock} units left</td></tr>`;
-        }
+        stockBody.innerHTML = Object.keys(menu).length === 0 ? `<tr><td colspan="3" class="empty-state">Menu database is empty.</td></tr>` : '';
+        for (let item in menu) stockBody.innerHTML += `<tr><td><strong>${item}</strong></td><td>$${menu[item].price.toFixed(2)}</td><td><span>${menu[item].stock} units left</span></td></tr>`;
 
         const payoutBody = document.getElementById('payout-table-body');
-        payoutBody.innerHTML = '';
-        for (let emp in employees) {
-            payoutBody.innerHTML += `<tr><td>${emp}</td><td><span style="color:#555;">${employees[emp].rank}</span></td><td><strong>$${employees[emp].earnings.toFixed(2)}</strong></td></tr>`;
-        }
+        payoutBody.innerHTML = Object.keys(employees).length === 0 ? `<tr><td colspan="3" class="empty-state">No workers recorded.</td></tr>` : '';
+        for (let emp in employees) payoutBody.innerHTML += `<tr><td><strong>${emp}</strong></td><td>${employees[emp].rank}</td><td><strong>$${employees[emp].earnings.toFixed(2)}</strong></td></tr>`;
 
         const memberBody = document.getElementById('members-table-body');
-        memberBody.innerHTML = '';
-        activeMembers.forEach(m => {
-            memberBody.innerHTML += `<tr><td>${m.name}</td><td>${m.phone}</td><td>${m.months} Months</td></tr>`;
-        });
+        memberBody.innerHTML = activeMembers.length === 0 ? `<tr><td colspan="3" class="empty-state">No registered customers.</td></tr>` : '';
+        activeMembers.forEach(m => memberBody.innerHTML += `<tr><td><strong>${m.name}</strong></td><td>${m.phone}</td><td><span class="badge">${m.months} Mos</span></td></tr>`);
     }
 
     function calculateLiveTotal() {
         const item = document.getElementById('order-item').value;
         const qty = parseInt(document.getElementById('order-qty').value) || 0;
         const isMember = document.getElementById('cust-is-member').value === 'yes';
-        const discountBadge = document.getElementById('discount-badge');
+        const badge = document.getElementById('discount-badge');
 
         if(menu[item]) {
             let baseCost = menu[item].price * qty;
             if(isMember) {
-                const discPercent = parseFloat(document.getElementById('config-mem-discount').value) || 0;
-                baseCost = baseCost * (1 - (discPercent / 100));
-                discountBadge.style.display = 'inline';
-                discountBadge.innerText = `(${discPercent}% Member Discount Applied)`;
-            } else {
-                discountBadge.style.display = 'none';
-            }
-            document.getElementById('live-total').innerText = baseCost.toFixed(2);
-        }
+                baseCost = baseCost * (1 - (config.memDiscount / 100));
+                badge.style.display = 'inline-block'; badge.innerText = `${config.memDiscount}% Off Applied`;
+            } else { badge.style.display = 'none'; }
+            document.getElementById('live-total').innerText = `$${baseCost.toFixed(2)}`;
+        } else { document.getElementById('live-total').innerText = "$0.00"; badge.style.display = 'none'; }
     }
 
     function calculateMembershipTotal() {
-        const pricePerMonth = parseFloat(document.getElementById('config-mem-price').value) || 0;
         const months = parseInt(document.getElementById('mem-months').value) || 0;
-        document.getElementById('mem-live-total').innerText = (pricePerMonth * months).toFixed(2);
+        document.getElementById('mem-live-total').innerText = `$${(config.memPrice * months).toFixed(2)}`;
+        config.memPrice = parseFloat(document.getElementById('config-mem-price').value) || 10.00;
+        config.memDiscount = parseFloat(document.getElementById('config-mem-discount').value) || 10;
     }
 
-    function submitOrder() {
+    async function submitOrder() {
         const custName = document.getElementById('cust-name').value;
         const item = document.getElementById('order-item').value;
         const qty = parseInt(document.getElementById('order-qty').value);
         const worker = document.getElementById('order-worker').value;
 
-        if (!custName) { alert("Operational Error: Missing Customer Identity."); return; }
-        if (menu[item].stock < qty) { alert("Operational Warning: Deficient Inventory Depth."); return; }
+        if (!custName || !item || !worker) { alert("Error: Missing parameters."); return; }
+        if (menu[item].stock < qty) { alert("Error: Insufficient stock."); return; }
 
-        menu[item].stock -= qty;
-        const calculationAmount = parseFloat(document.getElementById('live-total').innerText);
-        
-        const rank = employees[worker].rank;
-        const commissionRate = rankRates[rank];
-        const cutEarned = calculationAmount * commissionRate;
+        const calculatedPrice = parseFloat(document.getElementById('live-total').innerText.replace('$', ''));
+        const targetEmployee = employees[worker];
+        const commissionCut = calculatedPrice * rankRates[targetEmployee.rank];
 
-        employees[worker].earnings += cutEarned;
+        await _supabase.from('menu_items').update({ stock: menu[item].stock - qty }).eq('id', menu[item].id);
+        await _supabase.from('employees').update({ weekly_earnings: targetEmployee.earnings + commissionCut }).eq('id', targetEmployee.id);
 
-        alert(`Order Executed Successfully!\nCharged: $${calculationAmount.toFixed(2)}\nLedger Entry: ${worker} tracked for $${cutEarned.toFixed(2)} payout.`);
-        
+        alert("Order processed successfully!");
         document.getElementById('cust-name').value = '';
-        document.getElementById('order-qty').value = 1;
-        calculateLiveTotal();
-        renderTables();
+        await fetchAllCloudData();
     }
 
-    function registerMember() {
-        const name = document.getElementById('mem-cust-name').value;
-        const phone = document.getElementById('mem-cust-phone').value;
-        const months = parseInt(document.getElementById('mem-months').value);
-
-        if(!name || !phone || isNaN(months)) { alert("Validation Error: Please fill all membership parameters."); return; }
-
-        activeMembers.push({ name: name, phone: phone, months: months });
-        const chargeAmount = parseFloat(document.getElementById('mem-live-total').innerText);
-
-        alert(`Membership Created!\nCollect Upfront Cash: $${chargeAmount.toFixed(2)}`);
-
-        document.getElementById('mem-cust-name').value = '';
-        document.getElementById('mem-cust-phone').value = '';
-        document.getElementById('mem-months').value = 1;
-        calculateMembershipTotal();
-        renderTables();
-    }
-
-    function addMenuItem() {
+    async function addMenuItem() {
         const name = document.getElementById('new-item-name').value;
         const price = parseFloat(document.getElementById('new-item-price').value);
         const stock = parseInt(document.getElementById('new-item-stock').value);
 
-        if(!name || isNaN(price) || isNaN(stock)) { alert("Validation Error: Incomplete item specification."); return; }
+        if(!name || isNaN(price) || isNaN(stock)) { alert("Error: Incomplete data."); return; }
 
-        menu[name] = { price: price, stock: stock };
-        
+        await _supabase.from('menu_items').upsert([{ name, price, stock }], { onConflict: 'name' });
         document.getElementById('new-item-name').value = '';
         document.getElementById('new-item-price').value = '';
         document.getElementById('new-item-stock').value = '';
-        updateDropdowns();
-        renderTables();
-        calculateLiveTotal();
+        await fetchAllCloudData();
     }
 
-    function inviteEmployee() {
+    async function registerMember() {
+        const name = document.getElementById('mem-cust-name').value;
+        const phone = document.getElementById('mem-cust-phone').value;
+        const months = parseInt(document.getElementById('mem-months').value);
+
+        if(!name || !phone || isNaN(months)) { alert("Error: Incomplete data."); return; }
+
+        await _supabase.from('members').insert([{ name, phone, months }]);
+        document.getElementById('mem-cust-name').value = '';
+        document.getElementById('mem-cust-phone').value = '';
+        await fetchAllCloudData();
+    }
+
+    async function inviteEmployee() {
         const name = document.getElementById('emp-name').value;
         const email = document.getElementById('emp-email').value;
         const rank = document.getElementById('emp-rank').value;
 
-        if(!name || !email) { alert("Validation Error: Name and Email channels are mandatory."); return; }
+        if(!name || !email) { alert("Error: Missing credentials."); return; }
 
-        // Core simulated backend transaction link logic
-        const mockSecureToken = Math.random().toString(36).substring(2, 15);
-        const generatedLink = `${window.location.origin}${window.location.pathname}?inviteToken=${mockSecureToken}`;
+        // Core Trigger execution: Sends real invitation email via Supabase Auth
+        const { data, error } = await _supabase.auth.signInWithOtp({
+            email: email,
+            options: { shouldCreateUser: true }
+        });
 
-        // Insert instantly into local tracking ledger
-        employees[name] = { rank: rank, earnings: 0 };
-        
-        alert(`Invitation Dispatched Systematically!\nTarget: ${email}\nLink Sent: ${generatedLink}\n\nEmployee added to local roster pending confirmation.`);
-
+        if (error) {
+            alert("Invitation Error: " + error.message);
+        } else {
+            // Note: Since standard tiers limit admin actions, we log profile initialization hooks
+            await _supabase.from('employees').upsert([{ name, email, rank, weekly_earnings: 0.00 }], { onConflict: 'email' });
+            alert(`Success! Activation link emailed safely to ${email}`);
+        }
         document.getElementById('emp-name').value = '';
         document.getElementById('emp-email').value = '';
-        updateDropdowns();
-        renderTables();
+        await fetchAllCloudData();
     }
 
-    // --- Boot Initializer Execution ---
-    updateDropdowns();
-    renderTables();
-    calculateLiveTotal();
-    calculateMembershipTotal();
+    async function resetWeeklyPayroll() {
+        if(confirm("Reset all weekly tracking pools to $0.00?")) {
+            for(let emp in employees) {
+                await _supabase.from('employees').update({ weekly_earnings: 0.00 }).eq('id', employees[emp].id);
+            }
+            await fetchAllCloudData();
+        }
+    }
 </script>
-
 </body>
 </html>
