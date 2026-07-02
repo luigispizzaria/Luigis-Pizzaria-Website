@@ -2,96 +2,217 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Luigi's Pizzaria - Internal System</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f9f9f9; }
-        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        h1, h2 { color: #d32f2f; }
-        section { margin-bottom: 40px; padding-bottom: 20px; border-bottom: 2px solid #eee; }
-        label { display: block; margin-top: 10px; font-weight: bold; }
-        input, select, button { padding: 8px; margin-top: 5px; width: 100%; max-width: 300px; box-sizing: border-box; }
-        button { background-color: #4CAF50; color: white; border: none; cursor: pointer; font-weight: bold; }
+        body { font-family: Arial, sans-serif; margin: 0; background-color: #f4f4f9; padding: 20px; }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); position: relative; }
+        h1, h2, h3 { color: #d32f2f; margin-top: 0; }
+        
+        /* AUTH PAGE SHIELD */
+        #login-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:#d32f2f; display: flex; justify-content: center; align-items: center; z-index: 9999; }
+        .login-box { background: white; padding: 40px; border-radius: 8px; width: 100%; max-width: 350px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        
+        /* NAVIGATION TABS */
+        .tab-navigation { display: flex; gap: 10px; margin-bottom: 25px; border-bottom: 3px solid #d32f2f; padding-bottom: 10px; flex-wrap: wrap; }
+        .tab-btn { background-color: #eee; border: none; padding: 12px 20px; font-weight: bold; cursor: pointer; border-radius: 5px; color: #333; transition: 0.2s; }
+        .tab-btn:hover { background-color: #ddd; }
+        .tab-btn.active { background-color: #d32f2f; color: white; }
+        
+        /* SECTIONS WRAPPER */
+        .app-section { display: none; }
+        .app-section.active { display: block; }
+        
+        /* FORM UI COMPONENTS */
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .form-group { display: flex; flex-direction: column; }
+        label { margin-bottom: 5px; font-weight: bold; font-size: 14px; color: #555; }
+        input, select, button { padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 15px; box-sizing: border-box; }
+        button { background-color: #4CAF50; color: white; border: none; cursor: pointer; font-weight: bold; width: auto; align-self: flex-start; padding: 10px 25px; }
         button:hover { background-color: #45a049; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-        th { background-color: #f2f2f2; }
+        .logout-btn { background-color: #777; float: right; padding: 5px 12px; font-size: 13px; }
+        
+        /* DATA TABLES */
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #f8f8f8; color: #333; }
+        .flex-container { display: flex; gap: 30px; flex-wrap: wrap; }
+        .flex-child { flex: 1; min-width: 300px; }
     </style>
 </head>
 <body>
 
+<div id="login-overlay">
+    <div class="login-box">
+        <h2>🍕 Luigi's Login</h2>
+        <p style="color:#666; font-size:14px;">Demo Credentials: admin / admin</p>
+        <div class="form-group" style="margin-bottom: 15px;">
+            <input type="text" id="login-user" placeholder="Username / Email">
+        </div>
+        <div class="form-group" style="margin-bottom: 20px;">
+            <input type="password" id="login-pass" placeholder="Password">
+        </div>
+        <button onclick="handleLogin()" style="width:100%;">Sign In</button>
+    </div>
+</div>
+
 <div class="container">
-    <h1>🍕 Luigi's Pizzaria Management System</h1>
+    <button class="logout-btn" onclick="handleLogout()">Log Out</button>
+    <h1>🍕 Luigi's Management System</h1>
 
-    <section id="order-section">
-        <h2>Take Customer Order</h2>
-        <label>Customer Name:</label>
-        <input type="text" id="cust-name" placeholder="John Doe">
+    <div class="tab-navigation">
+        <button class="tab-btn active" onclick="switchTab('orders')">📥 Take Orders</button>
+        <button class="tab-btn" onclick="switchTab('memberships')">💳 Memberships</button>
+        <button class="tab-btn" onclick="switchTab('inventory')">📦 Menu & Stock</button>
+        <button class="tab-btn" onclick="switchTab('payroll')">👥 Team & Payroll</button>
+    </div>
 
-        <label>Select Item:</label>
-        <select id="order-item" onchange="calculateLiveTotal()">
-            </select>
-
-        <label>Quantity:</label>
-        <input type="number" id="order-qty" value="1" min="1" oninput="calculateLiveTotal()">
-
-        <label>Server/Worker:</label>
-        <select id="order-worker">
-            </select>
-
-        <p><strong>Total to Charge: </strong>$<span id="live-total">0.00</span></p>
-        <button onclick="submitOrder()">Submit Order</button>
+    <section id="orders" class="app-section active">
+        <h2>New Customer Order</h2>
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Customer Name:</label>
+                <input type="text" id="cust-name" placeholder="John Doe">
+            </div>
+            <div class="form-group">
+                <label>Is Customer a Member?</label>
+                <select id="cust-is-member" onchange="calculateLiveTotal()">
+                    <option value="no">No (Standard Pricing)</option>
+                    <option value="yes">Yes (Apply Member Discount)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Select Item:</label>
+                <select id="order-item" onchange="calculateLiveTotal()"></select>
+            </div>
+            <div class="form-group">
+                <label>Quantity:</label>
+                <input type="number" id="order-qty" value="1" min="1" oninput="calculateLiveTotal()">
+            </div>
+            <div class="form-group">
+                <label>Logged By (Worker):</label>
+                <select id="order-worker"></select>
+            </div>
+        </div>
+        <h3 style="color:#333;">Amount Due: $<span id="live-total">0.00</span> <span id="discount-badge" style="color:green; font-size:14px; display:none;"></span></h3>
+        <button onclick="submitOrder()">Process Order</button>
     </section>
 
-    <section id="admin-menu-stock">
-        <h2>Owner: Menu & Stock Settings</h2>
-        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-            <div>
-                <h3>Add Menu Item</h3>
-                <input type="text" id="new-item-name" placeholder="Item Name (e.g., Pepperoni Pizza)">
-                <input type="number" id="new-item-price" placeholder="Price ($)" step="0.01">
-                <input type="number" id="new-item-stock" placeholder="Initial Stock Qty">
-                <button onclick="addMenuItem()">Add/Update Item</button>
+    <section id="memberships" class="app-section">
+        <h2>Customer Membership Matrix</h2>
+        <div class="flex-container">
+            <div class="flex-child">
+                <h3>Register New Member</h3>
+                <div class="form-group" style="margin-bottom:12px;">
+                    <label>Full Name:</label>
+                    <input type="text" id="mem-cust-name" placeholder="Jane Smith">
+                </div>
+                <div class="form-group" style="margin-bottom:12px;">
+                    <label>Phone Number:</label>
+                    <input type="tel" id="mem-cust-phone" placeholder="555-0199">
+                </div>
+                <div class="form-group" style="margin-bottom:15px;">
+                    <label>Duration (Months):</label>
+                    <input type="number" id="mem-months" value="1" min="1" oninput="calculateMembershipTotal()">
+                </div>
+                <p><strong>Total Sign-up Cost:</strong> $<span id="mem-live-total">0.00</span></p>
+                <button onclick="registerMember()">Create Membership</button>
+            </div>
+            <div class="flex-child">
+                <h3>Active Members Database</h3>
+                <table>
+                    <thead>
+                        <tr><th>Name</th><th>Phone</th><th>Months Registered</th></tr>
+                    </thead>
+                    <tbody id="members-table-body">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section id="inventory" class="app-section">
+        <h2>Owner Dashboard: Offerings & Config</h2>
+        <div class="flex-container">
+            <div class="flex-child" style="border-right: 1px solid #eee; padding-right:20px;">
+                <h3>Add/Modify Menu Items</h3>
+                <div class="form-group" style="margin-bottom:10px;">
+                    <label>Item Designation:</label>
+                    <input type="text" id="new-item-name" placeholder="Meatlovers Pizza">
+                </div>
+                <div class="form-group" style="margin-bottom:10px;">
+                    <label>Unit Price ($):</label>
+                    <input type="number" id="new-item-price" step="0.01" placeholder="16.50">
+                </div>
+                <div class="form-group" style="margin-bottom:15px;">
+                    <label>Current Stock Count:</label>
+                    <input type="number" id="new-item-stock" placeholder="60">
+                </div>
+                <button onclick="addMenuItem()">Save Item</button>
+            </div>
+            
+            <div class="flex-child">
+                <h3>Membership Tier Structure</h3>
+                <div class="form-group" style="margin-bottom:10px;">
+                    <label>Rate Per Month ($):</label>
+                    <input type="number" id="config-mem-price" step="0.01" value="10.00" oninput="calculateMembershipTotal()">
+                </div>
+                <div class="form-group" style="margin-bottom:15px;">
+                    <label>Customer Menu Discount (%):</label>
+                    <input type="number" id="config-mem-discount" value="10" min="0" max="100" onchange="calculateLiveTotal()">
+                </div>
+                <p style="color:#666; font-size:13px; margin-top:5px;">Modifications update live calculation values globally instantly.</p>
             </div>
         </div>
 
-        <h3>Current Inventory & Prices</h3>
+        <h3 style="margin-top:30px;">Live Stock & Pricing Matrix</h3>
         <table>
             <thead>
-                <tr><th>Item Name</th><th>Price</th><th>Stock Left</th></tr>
+                <tr><th>Menu Selection</th><th>Standard Pricing</th><th>Current Stock Depth</th></tr>
             </thead>
-            <tbody id="stock-table-body">
-                </tbody>
+            <tbody id="stock-table-body"></tbody>
         </table>
     </section>
 
-    <section id="admin-employees">
-        <h2>Owner: Employee Ranks & Weekly Payouts</h2>
-        <div>
-            <h3>Add Employee</h3>
-            <input type="text" id="emp-name" placeholder="Employee Name">
-            <select id="emp-rank">
-                <option value="Owner">Owner (50%)</option>
-                <option value="Manager">Manager (45%)</option>
-                <option value="Chef">Chef (40%)</option>
-                <option value="Waiter">Waiter (35%)</option>
-                <option value="Events Team">Events Team (35%)</option>
-            </select>
-            <button onclick="addEmployee()">Add Employee</button>
+    <section id="payroll" class="app-section">
+        <h2>Owner Dashboard: Personnel & Commissions</h2>
+        <div class="flex-container">
+            <div class="flex-child">
+                <h3>Onboard Employee via Email Invite</h3>
+                <div class="form-group" style="margin-bottom:10px;">
+                    <label>Full Name:</label>
+                    <input type="text" id="emp-name" placeholder="Mario Rossi">
+                </div>
+                <div class="form-group" style="margin-bottom:10px;">
+                    <label>Corporate Email Address:</label>
+                    <input type="email" id="emp-email" placeholder="mario@luigispizza.com">
+                </div>
+                <div class="form-group" style="margin-bottom:15px;">
+                    <label>Operational Rank Assignment:</label>
+                    <select id="emp-rank">
+                        <option value="Owner">Owner (50%)</option>
+                        <option value="Manager">Manager (45%)</option>
+                        <option value="Chef">Chef (40%)</option>
+                        <option value="Waiter">Waiter (35%)</option>
+                        <option value="Events Team">Events Team (35%)</option>
+                    </select>
+                </div>
+                <button onclick="inviteEmployee()">Send Invitation Email</button>
+            </div>
         </div>
 
-        <h3>Weekly Payroll</h3>
+        <h3 style="margin-top:30px;">Weekly Payout Ledger</h3>
         <table>
             <thead>
-                <tr><th>Employee Name</th><th>Rank</th><th>Weekly Commission Earned</th></tr>
+                <tr><th>Team Member Name</th><th>Operational Rank</th><th>Accumulated Weekly Payout</th></tr>
             </thead>
-            <tbody id="payout-table-body">
-                </tbody>
+            <tbody id="payout-table-body"></tbody>
         </table>
     </section>
 </div>
 
 <script>
-    // --- Initial Demo Data ---
+    // --- Data Repositories ---
     let menu = {
         "Cheese Pizza": { price: 12.00, stock: 50 },
         "Pepperoni Pizza": { price: 15.00, stock: 40 },
@@ -104,25 +225,47 @@
         "Peach": { rank: "Waiter", earnings: 0 }
     };
 
+    let activeMembers = [
+        { name: "Bowser Koopa", phone: "555-1234", months: 6 }
+    ];
+
     const rankRates = {
-        "Owner": 0.50,
-        "Manager": 0.45,
-        "Chef": 0.40,
-        "Waiter": 0.35,
-        "Events Team": 0.35
+        "Owner": 0.50, "Manager": 0.45, "Chef": 0.40, "Waiter": 0.35, "Events Team": 0.35
     };
 
-    // --- Core Functions ---
+    // --- Authentication Flow ---
+    function handleLogin() {
+        const u = document.getElementById('login-user').value;
+        const p = document.getElementById('login-pass').value;
+        if(u === 'admin' && p === 'admin') {
+            document.getElementById('login-overlay').style.display = 'none';
+        } else {
+            alert("Invalid Credentials. Please use the demonstration default.");
+        }
+    }
+    function handleLogout() {
+        document.getElementById('login-user').value = '';
+        document.getElementById('login-pass').value = '';
+        document.getElementById('login-overlay').style.display = 'flex';
+    }
 
+    // --- Core Architecture Tab Handling ---
+    function switchTab(tabId) {
+        document.querySelectorAll('.app-section').forEach(sec => sec.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        
+        document.getElementById(tabId).classList.add('active');
+        event.currentTarget.classList.add('active');
+    }
+
+    // --- Core Operations Logic ---
     function updateDropdowns() {
-        // Update Items Dropdown
         const itemSelect = document.getElementById('order-item');
         itemSelect.innerHTML = '';
         for (let item in menu) {
             itemSelect.innerHTML += `<option value="${item}">${item} ($${menu[item].price.toFixed(2)})</option>`;
         }
         
-        // Update Workers Dropdown
         const workerSelect = document.getElementById('order-worker');
         workerSelect.innerHTML = '';
         for (let emp in employees) {
@@ -131,27 +274,49 @@
     }
 
     function renderTables() {
-        // Render Stock Table
         const stockBody = document.getElementById('stock-table-body');
         stockBody.innerHTML = '';
         for (let item in menu) {
-            stockBody.innerHTML += `<tr><td>${item}</td><td>$${menu[item].price.toFixed(2)}</td><td>${menu[item].stock}</td></tr>`;
+            stockBody.innerHTML += `<tr><td><strong>${item}</strong></td><td>$${menu[item].price.toFixed(2)}</td><td>${menu[item].stock} units left</td></tr>`;
         }
 
-        // Render Payout Table
         const payoutBody = document.getElementById('payout-table-body');
         payoutBody.innerHTML = '';
         for (let emp in employees) {
-            payoutBody.innerHTML += `<tr><td>${emp}</td><td>${employees[emp].rank}</td><td>$${employees[emp].earnings.toFixed(2)}</td></tr>`;
+            payoutBody.innerHTML += `<tr><td>${emp}</td><td><span style="color:#555;">${employees[emp].rank}</span></td><td><strong>$${employees[emp].earnings.toFixed(2)}</strong></td></tr>`;
         }
+
+        const memberBody = document.getElementById('members-table-body');
+        memberBody.innerHTML = '';
+        activeMembers.forEach(m => {
+            memberBody.innerHTML += `<tr><td>${m.name}</td><td>${m.phone}</td><td>${m.months} Months</td></tr>`;
+        });
     }
 
     function calculateLiveTotal() {
         const item = document.getElementById('order-item').value;
         const qty = parseInt(document.getElementById('order-qty').value) || 0;
+        const isMember = document.getElementById('cust-is-member').value === 'yes';
+        const discountBadge = document.getElementById('discount-badge');
+
         if(menu[item]) {
-            document.getElementById('live-total').innerText = (menu[item].price * qty).toFixed(2);
+            let baseCost = menu[item].price * qty;
+            if(isMember) {
+                const discPercent = parseFloat(document.getElementById('config-mem-discount').value) || 0;
+                baseCost = baseCost * (1 - (discPercent / 100));
+                discountBadge.style.display = 'inline';
+                discountBadge.innerText = `(${discPercent}% Member Discount Applied)`;
+            } else {
+                discountBadge.style.display = 'none';
+            }
+            document.getElementById('live-total').innerText = baseCost.toFixed(2);
         }
+    }
+
+    function calculateMembershipTotal() {
+        const pricePerMonth = parseFloat(document.getElementById('config-mem-price').value) || 0;
+        const months = parseInt(document.getElementById('mem-months').value) || 0;
+        document.getElementById('mem-live-total').innerText = (pricePerMonth * months).toFixed(2);
     }
 
     function submitOrder() {
@@ -160,27 +325,42 @@
         const qty = parseInt(document.getElementById('order-qty').value);
         const worker = document.getElementById('order-worker').value;
 
-        if (!custName) { alert("Please enter a customer name."); return; }
-        if (menu[item].stock < qty) { alert("Not enough stock left!"); return; }
+        if (!custName) { alert("Operational Error: Missing Customer Identity."); return; }
+        if (menu[item].stock < qty) { alert("Operational Warning: Deficient Inventory Depth."); return; }
 
-        // Deduct Stock
         menu[item].stock -= qty;
-
-        // Calculate Cost & Commission
-        const totalCost = menu[item].price * qty;
+        const calculationAmount = parseFloat(document.getElementById('live-total').innerText);
+        
         const rank = employees[worker].rank;
         const commissionRate = rankRates[rank];
-        const cutEarned = totalCost * commissionRate;
+        const cutEarned = calculationAmount * commissionRate;
 
-        // Add to employee payout
         employees[worker].earnings += cutEarned;
 
-        alert(`Order processed successfully!\nTotal Charged: $${totalCost.toFixed(2)}\n${worker} earned: $${cutEarned.toFixed(2)}`);
+        alert(`Order Executed Successfully!\nCharged: $${calculationAmount.toFixed(2)}\nLedger Entry: ${worker} tracked for $${cutEarned.toFixed(2)} payout.`);
         
-        // Refresh UI
         document.getElementById('cust-name').value = '';
         document.getElementById('order-qty').value = 1;
         calculateLiveTotal();
+        renderTables();
+    }
+
+    function registerMember() {
+        const name = document.getElementById('mem-cust-name').value;
+        const phone = document.getElementById('mem-cust-phone').value;
+        const months = parseInt(document.getElementById('mem-months').value);
+
+        if(!name || !phone || isNaN(months)) { alert("Validation Error: Please fill all membership parameters."); return; }
+
+        activeMembers.push({ name: name, phone: phone, months: months });
+        const chargeAmount = parseFloat(document.getElementById('mem-live-total').innerText);
+
+        alert(`Membership Created!\nCollect Upfront Cash: $${chargeAmount.toFixed(2)}`);
+
+        document.getElementById('mem-cust-name').value = '';
+        document.getElementById('mem-cust-phone').value = '';
+        document.getElementById('mem-months').value = 1;
+        calculateMembershipTotal();
         renderTables();
     }
 
@@ -189,35 +369,45 @@
         const price = parseFloat(document.getElementById('new-item-price').value);
         const stock = parseInt(document.getElementById('new-item-stock').value);
 
-        if(!name || isNaN(price) || isNaN(stock)) { alert("Please fill in all menu fields correctly."); return; }
+        if(!name || isNaN(price) || isNaN(stock)) { alert("Validation Error: Incomplete item specification."); return; }
 
         menu[name] = { price: price, stock: stock };
         
-        // Clear fields & Refresh
         document.getElementById('new-item-name').value = '';
         document.getElementById('new-item-price').value = '';
         document.getElementById('new-item-stock').value = '';
         updateDropdowns();
         renderTables();
+        calculateLiveTotal();
     }
 
-    function addEmployee() {
+    function inviteEmployee() {
         const name = document.getElementById('emp-name').value;
+        const email = document.getElementById('emp-email').value;
         const rank = document.getElementById('emp-rank').value;
 
-        if(!name) { alert("Please enter an employee name."); return; }
+        if(!name || !email) { alert("Validation Error: Name and Email channels are mandatory."); return; }
 
+        // Core simulated backend transaction link logic
+        const mockSecureToken = Math.random().toString(36).substring(2, 15);
+        const generatedLink = `${window.location.origin}${window.location.pathname}?inviteToken=${mockSecureToken}`;
+
+        // Insert instantly into local tracking ledger
         employees[name] = { rank: rank, earnings: 0 };
         
+        alert(`Invitation Dispatched Systematically!\nTarget: ${email}\nLink Sent: ${generatedLink}\n\nEmployee added to local roster pending confirmation.`);
+
         document.getElementById('emp-name').value = '';
+        document.getElementById('emp-email').value = '';
         updateDropdowns();
         renderTables();
     }
 
-    // Run setup on load
+    // --- Boot Initializer Execution ---
     updateDropdowns();
     renderTables();
     calculateLiveTotal();
+    calculateMembershipTotal();
 </script>
 
 </body>
