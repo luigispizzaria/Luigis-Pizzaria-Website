@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Luigi's Pizzaria - Employee Setup</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root { --primary: #c62828; --primary-dark: #b71c1c; --bg-main: #f8f9fa; --border: #e2e8f0; --radius: 12px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background: linear-gradient(135deg, var(--primary), #801313); display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .register-box { background: white; padding: 40px; border-radius: var(--radius); width: 100%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+        h2 { font-size: 26px; color: var(--primary); margin-bottom: 6px; font-weight: 700; text-align: center; }
+        p { color: #718096; font-size: 14px; margin-bottom: 24px; text-align: center; line-height: 1.5; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+        label { font-weight: 600; font-size: 12px; color: #4a5568; text-transform: uppercase; letter-spacing: 0.5px; }
+        input { padding: 12px 16px; border: 1px solid var(--border); border-radius: 8px; font-size: 15px; }
+        input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(198, 40, 40, 0.1); }
+        .action-btn { background-color: var(--primary); color: white; border: none; padding: 14px; font-size: 15px; font-weight: 600; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 10px; transition: background 0.2s; }
+        .action-btn:hover { background-color: var(--primary-dark); }
+    </style>
+</head>
+<body>
+
+<div class="register-box">
+    <h2>🍕 Account Security Setup</h2>
+    <p>Set up your private personal access password to link your terminal profile.</p>
+    
+    <div class="form-group">
+        <label>Create Secure Password</label>
+        <input type="password" id="reg-pass" placeholder="Minimum 6 characters">
+    </div>
+
+    <div class="form-group" style="margin-bottom: 20px;">
+        <label>Confirm Password</label>
+        <input type="password" id="reg-pass-confirm" placeholder="Re-enter password">
+    </div>
+
+    <button class="action-btn" onclick="completeRegistration()">Set Password & Open POS</button>
+</div>
+
+<script>
+    // INITIALIZATION VALUES: Swap with your exact Supabase API credentials
+    const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL"; 
+    const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    async function completeRegistration() {
+        const pass = document.getElementById('reg-pass').value;
+        const confirmPass = document.getElementById('reg-pass-confirm').value;
+
+        if (pass.length < 6) { alert("Security Rule: Password must be at least 6 characters long."); return; }
+        if (pass !== confirmPass) { alert("Input Error: Passwords do not match."); return; }
+
+        // Update the newly invited account with their customized password string
+        const { data, error } = await _supabase.auth.updateUser({ password: pass });
+
+        if (error) {
+            alert("Registration Error: " + error.message);
+        } else {
+            alert("Profile setup complete! Redirecting you straight to the terminal dashboard...");
+            window.location.href = "index.html"; 
+        }
+    }
+</script>
+</body>
+</html>
